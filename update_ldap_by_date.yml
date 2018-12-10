@@ -1,0 +1,9 @@
+ldap:
+  host: host.domain.net
+  user: cn=directory manager
+  pass: pass
+  basedn: dc=domain,dc=org
+  searchbase: uid=morgan
+other:
+  # in months
+  lookback: 4
