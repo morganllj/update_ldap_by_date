@@ -41,6 +41,9 @@ try:
         if (result_data == []):
             break
 
-            print ("result:", result_data)
+        print ("\nresult 0:", result_data[0][1]["uid"][0].decode("utf-8"))
+            # for r in result_data:
+            #     print (r)
+                
 except ldap.LDAPError as ldap_error:
     print ("problem searching ldap: ", ldap_error)
