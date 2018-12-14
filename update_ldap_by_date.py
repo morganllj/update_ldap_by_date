@@ -5,7 +5,8 @@ import getopt
 import re
 import sys
 import yaml
-import ldap
+from ldap3 import Server, Connection, ALL
+from datetime import datetime
 
 def print_usage():
     print ("usage: "+sys.argv[0]+" [-n] -c <config>.yml ")
@@ -29,29 +30,24 @@ if (config_file is None):
 with open (config_file, 'r') as ymlfile:
     config = yaml.load(ymlfile)
 
-try:
-    ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
-    l = ldap.initialize(config["ldap"]["host"])
-    l.simple_bind(config["ldap"]["binddn"], config["ldap"]["bindpass"]);
-    r = l.search(config["ldap"]["basedn"], ldap.SCOPE_SUBTREE, config["ldap"]["search"]);
-    result_set = []
+server = Server(config["ldap"]["host"])
+conn = Connection(server, config["ldap"]["binddn"], config["ldap"]["bindpass"], auto_bind=True)
+rc = conn.search(config["ldap"]["basedn"], config["ldap"]["search"], attributes=['*'])
+print (conn.entries)
 
-    while 1:
-        result_type, result_data = l.result(r, 0)
-        if (result_data == []):
-            break
+for e in conn.response:
 
-        frc_updt = "none"
-        last_updd = "none"
-        uid = result_data[0][1]["uid"][0].decode("utf-8")
-        if config["ldap"]["change_attr"] in result_data[0][1].keys():
-            frc_updt = result_data[0][1][config["ldap"]["change_attr"]][0].decode("utf-8")
-        if config["ldap"]["dateattr"]   in result_data[0][1].keys():
-            last_updd = result_data[0][1][config["ldap"]["dateattr"]][0].decode("utf-8")
+    print ()
+    
+    frc_updt = "none"
+    last_updd = "none"
 
-        print (uid, frc_updt, last_updd)
+    if config["ldap"]["change_attr"] in e['attributes'].keys():
+       frc_updt   = e['attributes'][config["ldap"]["change_attr"]]
+    if config["ldap"]["dateattr"]    in e['attributes'].keys():
+        last_updd =  e['attributes'][config["ldap"]["dateattr"]]
 
-
-                
-except ldap.LDAPError as ldap_error:
-    print ("problem searching ldap: ", ldap_error)
+    if isinstance(last_updd[0], datetime):
+        print (e['attributes']['uid'][0], last_updd[0].date() , frc_updt)
+    else:
+        print (e['attributes']['uid'][0], last_updd, frc_updt)
