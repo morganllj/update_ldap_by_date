@@ -41,9 +41,17 @@ try:
         if (result_data == []):
             break
 
-        print ("\nresult 0:", result_data[0][1]["uid"][0].decode("utf-8"))
-            # for r in result_data:
-            #     print (r)
+        frc_updt = "none"
+        last_updd = "none"
+        uid = result_data[0][1]["uid"][0].decode("utf-8")
+        if config["ldap"]["change_attr"] in result_data[0][1].keys():
+            frc_updt = result_data[0][1][config["ldap"]["change_attr"]][0].decode("utf-8")
+        if config["ldap"]["dateattr"]   in result_data[0][1].keys():
+            last_updd = result_data[0][1][config["ldap"]["dateattr"]][0].decode("utf-8")
+
+        print (uid, frc_updt, last_updd)
+
+
                 
 except ldap.LDAPError as ldap_error:
     print ("problem searching ldap: ", ldap_error)
