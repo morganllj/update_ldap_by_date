@@ -6,7 +6,8 @@ import re
 import sys
 import yaml
 from ldap3 import Server, Connection, ALL
-from datetime import datetime
+from datetime import datetime, timezone, date
+from dateutil.relativedelta import relativedelta
 
 def print_usage():
     print ("usage: "+sys.argv[0]+" [-n] -c <config>.yml ")
@@ -33,12 +34,9 @@ with open (config_file, 'r') as ymlfile:
 server = Server(config["ldap"]["host"])
 conn = Connection(server, config["ldap"]["binddn"], config["ldap"]["bindpass"], auto_bind=True)
 rc = conn.search(config["ldap"]["basedn"], config["ldap"]["search"], attributes=['*'])
-print (conn.entries)
 
 for e in conn.response:
 
-    print ()
-    
     frc_updt = "none"
     last_updd = "none"
 
@@ -48,6 +46,11 @@ for e in conn.response:
         last_updd =  e['attributes'][config["ldap"]["dateattr"]]
 
     if isinstance(last_updd[0], datetime):
-        print (e['attributes']['uid'][0], last_updd[0].date() , frc_updt)
+        print (e['attributes']['uid'][0], last_updd[0].date(), last_updd[0].time() , frc_updt, " ", end='')
+        months_ago = date.today() + relativedelta(months=-config["other"]["lookback"])
+        if (last_updd[0].date() < months_ago):
+                print ("update!")
+        else:
+                print ("leave!")
     else:
         print (e['attributes']['uid'][0], last_updd, frc_updt)
