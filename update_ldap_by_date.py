@@ -29,27 +29,29 @@ if (config_file is None):
 
 # https://martin-thoma.com/configuration-files-in-python/open
 with open (config_file, 'r') as ymlfile:
-    config = yaml.load(ymlfile)
+    cfg = yaml.load(ymlfile)
 
-server = Server(config["ldap"]["host"])
-conn = Connection(server, config["ldap"]["binddn"], config["ldap"]["bindpass"], auto_bind=True)
-rc = conn.search(config["ldap"]["basedn"], config["ldap"]["search"], attributes=['*'])
+server = Server(cfg["ldap"]["host"])
+conn = Connection(server, cfg["ldap"]["binddn"], cfg["ldap"]["bindpass"], auto_bind=True)
+rc = conn.search(cfg["ldap"]["basedn"], cfg["ldap"]["search"], attributes=['*'])
 
 for e in conn.response:
-
     frc_updt = "none"
     last_updd = "none"
 
-    if config["ldap"]["change_attr"] in e['attributes'].keys():
-       frc_updt   = e['attributes'][config["ldap"]["change_attr"]]
-    if config["ldap"]["dateattr"]    in e['attributes'].keys():
-        last_updd =  e['attributes'][config["ldap"]["dateattr"]]
+    for change_attr in 
+    if cfg["ldap"]["change_attr"] in e['attributes'].keys():
+       frc_updt.append(e['attributes'][cfg["ldap"]["change_attr"]])
+    if cfg["ldap"]["dateattr"]    in e['attributes'].keys():
+        last_updd.append(e['attributes'][cfg["ldap"]["dateattr"]])
 
     if isinstance(last_updd[0], datetime):
         print (e['attributes']['uid'][0], last_updd[0].date(), last_updd[0].time() , frc_updt, " ", end='')
-        months_ago = date.today() + relativedelta(months=-config["other"]["lookback"])
+        months_ago = date.today() + relativedelta(months=-cfg["other"]["lookback"])
         if (last_updd[0].date() < months_ago):
-                print ("update!")
+                i = 0
+                for a in cfg["ldap"]["change_attr"]:
+                    print (a, ":", cfg["ldap"]["change_value"][i])
         else:
                 print ("leave!")
     else:
