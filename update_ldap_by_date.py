@@ -20,11 +20,6 @@ def change_values(e):
 
 
     if not print_only:
-        # conn.modify(e["dn"],
-        #     { cfg["ldap"]["change_attr"]:   [(MODIFY_REPLACE, ["ldap"]["change_value"])],
-        #       cfg["ldap"]["statuslogattr"]: [(MODIFY_ADD,     [ldapdatenow+" update_ldap_by_date.py set "+changefrom+" to "+changeto])]
-        #     })
-
         conn.modify(e["dn"],
             { cfg["ldap"]["change_attr"]:       [(MODIFY_REPLACE, cfg["ldap"]["change_value"])],
               cfg["ldap"]["acctstatuslogattr"]: [(MODIFY_ADD,     [ldapdatenow+" update_ldap_by_date.py set "+cfg["ldap"]["change_attr"]+" to "+cfg["ldap"]["change_value"]])]
@@ -35,24 +30,6 @@ def change_values(e):
 
         print("")
         sys.exit()
-
-
-
-
-#        changes[cfg["ldap"]["acctstatusattr"]] = [(MODIFY_ADD, [ldapdatenow+" update_ldap_by_date.py set "+changefrom+" to "+changeto])]
-
-    
-
-    
-#    changes[cfg["ldap"]["acctstatusattr"]: [(MODIFY_ADD, [ldapdatenow+" update_ldap_by_date.py"])]]
-#     for a in cfg["ldap"]["change_attrs"]:
-# #        changes[cfg["ldap"]["change_attrs"][i]] =  [(MODIFY_REPLACE, [cfg["ldap"]["change_values"[i]]])]
-# #        changes["sdpForceAccountUpdate"] =  [(MODIFY_REPLACE, [cfg["ldap"]["change_values"[i]]])]
-#         changes["sdpForceAccountUpdate"] =  [(MODIFY_REPLACE, [)]
-#         i=i+1
-#     print ("changes:", changes)
-# #    conn.modify(dn, changes)
-    
 
 opts, args = getopt.getopt(sys.argv[1:], "nc:")
 
