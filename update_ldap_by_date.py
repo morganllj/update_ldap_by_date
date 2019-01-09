@@ -14,22 +14,28 @@ def print_usage():
     exit()
 
 
-def change_values(e):
+def change_values(e,ldapdateinldap):
     i=0
     changes = {};
 
 
     if not print_only:
-        conn.modify(e["dn"],
-            { cfg["ldap"]["change_attr"]:       [(MODIFY_REPLACE, cfg["ldap"]["change_value"])],
-              cfg["ldap"]["acctstatuslogattr"]: [(MODIFY_ADD,     [ldapdatenow+" update_ldap_by_date.py set "+cfg["ldap"]["change_attr"]+" to "+cfg["ldap"]["change_value"]])]
-            })        
+        if (ldapdateinldap is None):
+            conn.modify(e["dn"],
+                { cfg["ldap"]["change_attr"]:       [(MODIFY_REPLACE, cfg["ldap"]["change_value"])],
+                  cfg["ldap"]["acctstatuslogattr"]: [(MODIFY_ADD,
+                      [ldapdatenow+" update_ldap_by_date.py set " + cfg["ldap"]["change_attr"] + " to " + cfg["ldap"]["change_value"] + ", " + cfg["ldap"]["dateattr"] + ": None"])]
+                })
+        else:
+            conn.modify(e["dn"],
+                { cfg["ldap"]["change_attr"]:       [(MODIFY_REPLACE, cfg["ldap"]["change_value"])],
+                  cfg["ldap"]["acctstatuslogattr"]: [(MODIFY_ADD,
+                      [ldapdatenow+" update_ldap_by_date.py set " + cfg["ldap"]["change_attr"] + " to " + cfg["ldap"]["change_value"] + ", " + cfg["ldap"]["dateattr"] + ": "+  ldapdateinldap])]
+                })
+            
         if conn.result["result"]:
             print ("modify failed:", conn.result)
             sys.exit()
-
-        print("")
-        sys.exit()
 
 opts, args = getopt.getopt(sys.argv[1:], "nc:")
 
@@ -53,50 +59,41 @@ server = Server(cfg["ldap"]["host"])
 conn = Connection(server, cfg["ldap"]["binddn"], cfg["ldap"]["bindpass"], auto_bind=True)
 rc = conn.search(cfg["ldap"]["basedn"], cfg["ldap"]["search"], attributes=['*'])
 
- # olddatetime=olddatetime.astimezone(pytz.UTC)
- #        priorldapdateexp = olddatetime.strftime('%Y%m%d%H%M%S') + "Z"
-
- #    ldapdatenow = datetime.utcnow().strftime('%Y%m%d%H%M%S') + "Z"
-
 datenow = datetime.now(pytz.utc);
 ldapdatenow = datenow.astimezone(pytz.UTC).strftime('%Y%m%d%H%M%S') + "Z"
 
 for e in conn.response:
     print (e["attributes"]["uid"][0], "!", sep="", end="")
+    
     if cfg["ldap"]["dateattr"] in e["attributes"].keys():
         dateinldap = e["attributes"][cfg["ldap"]["dateattr"]][0]
+        ldapdateinldap = dateinldap.astimezone(pytz.UTC).strftime('%Y%m%d%H%M%S') + "Z"
+        
         print (dateinldap, "!", sep="", end="")
         lookbacktime = timedelta(days=cfg["other"]["lookback"])
+        
+        if cfg["ldap"]["change_attr"] in e["attributes"].keys():
+            if e["attributes"][cfg["ldap"]["change_attr"]] == True:
+                print ("alreadyset", sep="!")
+                continue
+
         if dateinldap < (datenow-lookbacktime):
             print ("forceupdate", end="")
-            change_values(e)
+            change_values(e,ldapdateinldap)
         else:
             print ("noupdate", sep="!", end="")
     else:
-        print ("None","forceupdate", sep="!", end="")
-        change_values(e)
+        print ("None!", sep="!", end="")
+
+        if cfg["ldap"]["change_attr"] in e["attributes"].keys():
+            if e["attributes"][cfg["ldap"]["change_attr"]] == True:
+                print ("alreadyset", sep="!")
+                continue
+            else:
+                print ("forceupdate", end="")
+                change_values(e,None)
+        else:
+            print ("forceupdate", end="")
+            change_values(e,None)
     print ("")
         
-
-
-    
-    # frc_updt = "none"
-    # last_updd = "none"
-
-    # for change_attr in 
-    # if cfg["ldap"]["change_attr"] in e['attributes'].keys():
-    #    frc_updt.append(e['attributes'][cfg["ldap"]["change_attr"]])
-    # if cfg["ldap"]["dateattr"]    in e['attributes'].keys():
-    #     last_updd.append(e['attributes'][cfg["ldap"]["dateattr"]])
-
-    # if isinstance(last_updd[0], datetime):
-    #     print (e['attributes']['uid'][0], last_updd[0].date(), last_updd[0].time() , frc_updt, " ", end='')
-    #     months_ago = date.today() + relativedelta(months=-cfg["other"]["lookback"])
-    #     if (last_updd[0].date() < months_ago):
-    #             i = 0
-    #             for a in cfg["ldap"]["change_attr"]:
-    #                 print (a, ":", cfg["ldap"]["change_value"][i])
-    #     else:
-    #             print ("leave!")
-    # else:
-    #     print (e['attributes']['uid'][0], last_updd, frc_updt)
