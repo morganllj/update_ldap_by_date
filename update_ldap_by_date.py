@@ -37,9 +37,10 @@ def change_values(e,ldapdateinldap):
             print ("modify failed:", conn.result)
             sys.exit()
 
-opts, args = getopt.getopt(sys.argv[1:], "nc:")
+opts, args = getopt.getopt(sys.argv[1:], "nc:d")
 
 print_only = 0
+debug = 0
 config_file = None
 
 for opt, arg in opts:
@@ -47,6 +48,8 @@ for opt, arg in opts:
         print_only = 1
     elif opt in ('-c'):
         config_file = arg
+    elif opt in ('-d'):
+        debug = 1
 
 if (config_file is None):
     print_usage()
@@ -62,38 +65,50 @@ rc = conn.search(cfg["ldap"]["basedn"], cfg["ldap"]["search"], attributes=['*'])
 datenow = datetime.now(pytz.utc);
 ldapdatenow = datenow.astimezone(pytz.UTC).strftime('%Y%m%d%H%M%S') + "Z"
 
+
+
 for e in conn.response:
-    print (e["attributes"]["uid"][0], "!", sep="", end="")
+    outstr = None    
+    
+    outstr = e["attributes"]["uid"][0] + "!"
     
     if cfg["ldap"]["dateattr"] in e["attributes"].keys():
         dateinldap = e["attributes"][cfg["ldap"]["dateattr"]][0]
         ldapdateinldap = dateinldap.astimezone(pytz.UTC).strftime('%Y%m%d%H%M%S') + "Z"
         
-        print (dateinldap, "!", sep="", end="")
+        outstr = outstr + dateinldap.astimezone(pytz.UTC).strftime('%Y%m%d%H%M%S') + "Z" + "!"
+        
         lookbacktime = timedelta(days=cfg["other"]["lookback"])
         
         if cfg["ldap"]["change_attr"] in e["attributes"].keys():
             if e["attributes"][cfg["ldap"]["change_attr"]] == True:
-                print ("alreadyset", sep="!")
+                outstr = outstr + "alreadyset"
+                if debug:
+                    print (outstr)
                 continue
-
         if dateinldap < (datenow-lookbacktime):
-            print ("forceupdate", end="")
+            outstr = outstr + "forceupdate"
+            print (outstr)
             change_values(e,ldapdateinldap)
         else:
-            print ("noupdate", sep="!", end="")
+            outstr = outstr + "noupdate"
+            if debug:
+                print (outstr)
     else:
-        print ("None!", sep="!", end="")
+        outstr = outstr + "None" + "!";
 
         if cfg["ldap"]["change_attr"] in e["attributes"].keys():
             if e["attributes"][cfg["ldap"]["change_attr"]] == True:
-                print ("alreadyset", sep="!")
+                outstr = outstr + "alreadyset"
+                if debug:
+                    print (outstr)
                 continue
             else:
-                print ("forceupdate", end="")
+                oustr = outstr + "forceupdate";
+                print (outstr)
                 change_values(e,None)
         else:
-            print ("forceupdate", end="")
+            outstr = outstr + "forceupdate"
+            print (outstr)
             change_values(e,None)
-    print ("")
         
