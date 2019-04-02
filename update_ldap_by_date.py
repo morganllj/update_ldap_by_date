@@ -10,7 +10,10 @@ from datetime import datetime, timezone, date, timedelta
 import pytz
 
 def print_usage():
-    print ("usage: "+sys.argv[0]+" [-n] -c <config>.yml ")
+    print ("usage: "+sys.argv[0]+" [-d] [-n] -c <config>.yml")
+    print ("    -n print-only")
+    print ("    -d debug: also print accounts that won't be changed")
+    print ()
     exit()
 
 
