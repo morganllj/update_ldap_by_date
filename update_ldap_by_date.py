@@ -8,6 +8,7 @@ import yaml
 from ldap3 import Server, Connection, ALL, MODIFY_REPLACE, MODIFY_ADD
 from datetime import datetime, timezone, date, timedelta
 import pytz
+import syslog
 
 def print_usage():
     print ("usage: "+sys.argv[0]+" [-d] [-n] -c <config>.yml")
@@ -16,24 +17,42 @@ def print_usage():
     print ()
     exit()
 
+datenow = datetime.now(pytz.utc);
+ldapdatenow = datenow.astimezone(pytz.UTC).strftime('%Y%m%d%H%M%S') + "Z"
+
+def my_print(*args):
+    if (print_only and not args[0].startswith('-n')):
+        print ("ro ", end="")
+    print (*args)
+    a = ' '.join(args)
+
+    r = ""
+    if (print_only and not args[0].startswith('-n')):
+        r = " ro"
+    syslog.syslog(syslog.LOG_INFO, ldapdatenow + r + " " + a)
 
 def change_values(e,ldapdateinldap):
     i=0
     changes = {};
 
-
     if not print_only:
         if (ldapdateinldap is None):
             conn.modify(e["dn"],
-                { cfg["ldap"]["change_attr"]:       [(MODIFY_REPLACE, cfg["ldap"]["change_value"])],
+                { cfg["ldap"]["change_attr"]:       [(MODIFY_REPLACE,
+                      cfg["ldap"]["change_value"])],
                   cfg["ldap"]["acctstatuslogattr"]: [(MODIFY_ADD,
-                      [ldapdatenow+" update_ldap_by_date.py set " + cfg["ldap"]["change_attr"] + " to " + cfg["ldap"]["change_value"] + ", " + cfg["ldap"]["dateattr"] + ": None"])]
+                      [ldapdatenow+" update_ldap_by_date.py set " +
+                          cfg["ldap"]["change_attr"] + " to " + cfg["ldap"]["change_value"] +
+                          ", " + cfg["ldap"]["dateattr"] + ": None"])]
                 })
         else:
             conn.modify(e["dn"],
-                { cfg["ldap"]["change_attr"]:       [(MODIFY_REPLACE, cfg["ldap"]["change_value"])],
+                { cfg["ldap"]["change_attr"]:       [(MODIFY_REPLACE,
+                      cfg["ldap"]["change_value"])],
                   cfg["ldap"]["acctstatuslogattr"]: [(MODIFY_ADD,
-                      [ldapdatenow+" update_ldap_by_date.py set " + cfg["ldap"]["change_attr"] + " to " + cfg["ldap"]["change_value"] + ", " + cfg["ldap"]["dateattr"] + ": "+  ldapdateinldap])]
+                      [ldapdatenow+" update_ldap_by_date.py set " +
+                          cfg["ldap"]["change_attr"] + " to " + cfg["ldap"]["change_value"] +
+                          ", " + cfg["ldap"]["dateattr"] + ": "+  ldapdateinldap])]
                 })
             
         if conn.result["result"]:
@@ -57,6 +76,12 @@ for opt, arg in opts:
 if (config_file is None):
     print_usage()
 
+syslog.syslog(syslog.LOG_INFO, ldapdatenow + " starting " +
+                  datetime.now(pytz.utc).astimezone(pytz.UTC).strftime('%Y%m%d%H%M%S') + "Z")
+    
+if (print_only):
+    my_print("-n used, no changes will be made")
+    
 # https://martin-thoma.com/configuration-files-in-python/open
 with open (config_file, 'r') as ymlfile:
     cfg = yaml.load(ymlfile)
@@ -64,11 +89,6 @@ with open (config_file, 'r') as ymlfile:
 server = Server(cfg["ldap"]["host"])
 conn = Connection(server, cfg["ldap"]["binddn"], cfg["ldap"]["bindpass"], auto_bind=True)
 rc = conn.search(cfg["ldap"]["basedn"], cfg["ldap"]["search"], attributes=['*'])
-
-datenow = datetime.now(pytz.utc);
-ldapdatenow = datenow.astimezone(pytz.UTC).strftime('%Y%m%d%H%M%S') + "Z"
-
-
 
 for e in conn.response:
     outstr = None    
@@ -87,16 +107,16 @@ for e in conn.response:
             if e["attributes"][cfg["ldap"]["change_attr"]] == True:
                 outstr = outstr + "alreadyset"
                 if debug:
-                    print (outstr)
+                    my_print (outstr)
                 continue
         if dateinldap < (datenow-lookbacktime):
             outstr = outstr + "forceupdate"
-            print (outstr)
+            my_print (outstr)
             change_values(e,ldapdateinldap)
         else:
             outstr = outstr + "noupdate"
             if debug:
-                print (outstr)
+                my_print (outstr)
     else:
         outstr = outstr + "None" + "!";
 
@@ -104,14 +124,16 @@ for e in conn.response:
             if e["attributes"][cfg["ldap"]["change_attr"]] == True:
                 outstr = outstr + "alreadyset"
                 if debug:
-                    print (outstr)
+                    my_print (outstr)
                 continue
             else:
                 oustr = outstr + "forceupdate";
-                print (outstr)
+                my_print (outstr)
                 change_values(e,None)
         else:
             outstr = outstr + "forceupdate"
-            print (outstr)
+            my_print (outstr)
             change_values(e,None)
         
+syslog.syslog(syslog.LOG_INFO, ldapdatenow + " finished " +
+                  datetime.now(pytz.utc).astimezone(pytz.UTC).strftime('%Y%m%d%H%M%S') + "Z")
